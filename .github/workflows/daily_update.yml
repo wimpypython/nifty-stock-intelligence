@@ -1,0 +1,65 @@
+name: Daily Nifty 50 Data Update
+
+# NSE closes at 15:30 IST (10:00 UTC). Running at 18:30 UTC (midnight IST)
+# leaves Yahoo several hours to finalise the day's numbers.
+#
+# GitHub's scheduler is best-effort and often runs late under load. That is
+# fine here: the fetch is incremental, so a late or skipped run simply picks
+# up whatever is missing on the next pass.
+on:
+  schedule:
+    - cron: '30 18 * * 1-5'   # Mon-Fri, 18:30 UTC = 00:00 IST
+  workflow_dispatch:           # allows manual runs from the Actions tab
+
+# Required for the bot to push updated CSVs back to the repo.
+# Without this the workflow runs green but the commit step fails.
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        id: pipeline
+        run: python scripts/update_all_stocks.py
+
+      - name: Commit updated data
+        if: success()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          # No changes on a holiday or a re-run is normal, not an error.
+          if git diff --staged --quiet; then
+            echo "No data changes to commit."
+          else
+            git commit -m "Auto-update: $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
+
+      # Surface the run summary in the Actions UI so a failure is readable
+      # without digging through logs.
+      - name: Report status
+        if: always()
+        run: |
+          if [ -f data/metadata/last_updated.txt ]; then
+            echo "### Pipeline status" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat data/metadata/last_updated.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi

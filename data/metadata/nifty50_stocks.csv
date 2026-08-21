@@ -1,0 +1,51 @@
+NSE_Ticker,Yahoo_Ticker,Company_Name,Sector,Index_Weight
+RELIANCE,RELIANCE.NS,Reliance Industries,Energy,10.5
+TCS,TCS.NS,Tata Consultancy Services,IT,9.2
+HDFCBANK,HDFCBANK.NS,HDFC Bank,Banking,7.8
+ICICIBANK,ICICIBANK.NS,ICICI Bank,Banking,6.1
+INFY,INFY.NS,Infosys,IT,5.8
+BHARTIARTL,BHARTIARTL.NS,Bharti Airtel,Telecom,4.2
+SBIN,SBIN.NS,State Bank of India,Banking,3.9
+LT,LT.NS,Larsen and Toubro,Infrastructure,3.6
+ITC,ITC.NS,ITC Limited,FMCG,3.4
+HINDUNILVR,HINDUNILVR.NS,Hindustan Unilever,FMCG,3.2
+KOTAKBANK,KOTAKBANK.NS,Kotak Mahindra Bank,Banking,3.1
+AXISBANK,AXISBANK.NS,Axis Bank,Banking,2.9
+BAJFINANCE,BAJFINANCE.NS,Bajaj Finance,NBFC,2.8
+HCLTECH,HCLTECH.NS,HCL Technologies,IT,2.6
+MARUTI,MARUTI.NS,Maruti Suzuki,Auto,2.4
+SUNPHARMA,SUNPHARMA.NS,Sun Pharmaceutical,Pharma,2.3
+ASIANPAINT,ASIANPAINT.NS,Asian Paints,Consumer,2.1
+TITAN,TITAN.NS,Titan Company,Consumer,1.9
+TMPV,TMPV.NS,Tata Motors Passenger Vehicles,Auto,1.9
+WIPRO,WIPRO.NS,Wipro,IT,1.8
+ULTRACEMCO,ULTRACEMCO.NS,UltraTech Cement,Cement,1.7
+BAJAJFINSV,BAJAJFINSV.NS,Bajaj Finserv,NBFC,1.6
+NTPC,NTPC.NS,NTPC Limited,Utilities,1.5
+POWERGRID,POWERGRID.NS,Power Grid Corporation,Utilities,1.4
+ONGC,ONGC.NS,Oil and Natural Gas Corporation,Energy,1.4
+COALINDIA,COALINDIA.NS,Coal India,Mining,1.3
+TECHM,TECHM.NS,Tech Mahindra,IT,1.3
+HDFCLIFE,HDFCLIFE.NS,HDFC Life Insurance,Insurance,1.2
+INDUSINDBK,INDUSINDBK.NS,IndusInd Bank,Banking,1.1
+M&M,M&M.NS,Mahindra and Mahindra,Auto,1.1
+ADANIENT,ADANIENT.NS,Adani Enterprises,Conglomerate,1.0
+GRASIM,GRASIM.NS,Grasim Industries,Cement,1.0
+BPCL,BPCL.NS,Bharat Petroleum Corporation,Energy,0.9
+DIVISLAB,DIVISLAB.NS,Divis Laboratories,Pharma,0.9
+EICHERMOT,EICHERMOT.NS,Eicher Motors,Auto,0.9
+CIPLA,CIPLA.NS,Cipla,Pharma,0.9
+SBILIFE,SBILIFE.NS,SBI Life Insurance,Insurance,0.9
+JSWSTEEL,JSWSTEEL.NS,JSW Steel,Metals,0.9
+BAJAJ-AUTO,BAJAJ-AUTO.NS,Bajaj Auto,Auto,0.9
+ADANIPORTS,ADANIPORTS.NS,Adani Ports and SEZ,Infrastructure,0.9
+BRITANNIA,BRITANNIA.NS,Britannia Industries,FMCG,0.8
+APOLLOHOSP,APOLLOHOSP.NS,Apollo Hospitals,Healthcare,0.8
+TATACONSUM,TATACONSUM.NS,Tata Consumer Products,FMCG,0.8
+TATASTEEL,TATASTEEL.NS,Tata Steel,Metals,0.8
+HINDALCO,HINDALCO.NS,Hindalco Industries,Metals,0.8
+DRREDDY,DRREDDY.NS,Dr Reddys Laboratories,Pharma,0.8
+TRENT,TRENT.NS,Trent Limited,Consumer,0.8
+NESTLEIND,NESTLEIND.NS,Nestle India,FMCG,0.7
+HEROMOTOCO,HEROMOTOCO.NS,Hero MotoCorp,Auto,0.7
+SHRIRAMFIN,SHRIRAMFIN.NS,Shriram Finance,NBFC,0.7
