@@ -8,7 +8,10 @@ name: Daily Nifty 50 Data Update
 # up whatever is missing on the next pass.
 on:
   schedule:
-    - cron: '30 18 * * 1-5'   # Mon-Fri, 18:30 UTC = 00:00 IST
+    - cron: '30 3 * * 2-6'    # Tue-Sat 03:30 UTC = 09:00 IST, picks up the
+                              # PREVIOUS session. Yahoo can take >24h to
+                              # finalise an Indian daily bar, so running at
+                              # midnight IST reliably missed that day.
   workflow_dispatch:           # allows manual runs from the Actions tab
 
 # Required for the bot to push updated CSVs back to the repo.

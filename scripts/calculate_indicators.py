@@ -31,13 +31,32 @@ MIN_OVERLAP_DAYS = 60      # below this, Beta/Sharpe are not meaningful
 
 
 def load_prices(ticker):
-    """Load one ticker's price history, or None if the file is missing."""
+    """
+    Load one ticker's price history, or None if unusable.
+
+    Guards against a specific real failure: if Excel opens a CSV and saves
+    it, dates can be rewritten from YYYY-MM-DD into a regional format like
+    DD-MM-YYYY. pandas cannot parse those, silently leaves the column as
+    strings, and every later date operation raises a confusing TypeError
+    far away from the actual cause. Better to reject the file here with a
+    clear message.
+    """
     path = os.path.join(HISTORICAL_DIR, ticker + ".csv")
     if not os.path.exists(path):
         return None
+
     df = pd.read_csv(path, parse_dates=["Date"])
     if df.empty or "Close" not in df.columns:
         return None
+
+    if not pd.api.types.is_datetime64_any_dtype(df["Date"]):
+        raise ValueError(
+            "Date column did not parse as dates (got %s). The file was "
+            "probably opened and re-saved by Excel. Delete it and re-fetch: "
+            "python scripts/fetch_historical.py --only %s"
+            % (df["Date"].dtype, ticker)
+        )
+
     return df.sort_values("Date").set_index("Date")
 
 
@@ -125,7 +144,18 @@ def main():
 
     for _, meta in stocks.iterrows():
         ticker = meta["NSE_Ticker"]
-        df = load_prices(ticker)
+        try:
+            df = load_prices(ticker)
+        except Exception as exc:
+            # Degrade to "this ticker has no metrics", never kill the run.
+            print("  %-12s SKIPPED - %s" % (ticker, exc))
+            rows.append({
+                "Ticker": ticker,
+                "Company": meta["Company_Name"],
+                "Sector": meta["Sector"],
+                "Data_Points": 0,
+            })
+            continue
 
         if df is None:
             print("  %-12s SKIPPED (no data file)" % ticker)
@@ -137,39 +167,49 @@ def main():
             })
             continue
 
-        stock_ret = df["Daily_Return_Pct"].rename("stock")
-        close = df["Close"]
+        try:
+            stock_ret = df["Daily_Return_Pct"].rename("stock")
+            close = df["Close"]
 
-        joined = pd.concat([stock_ret, market_ret], axis=1, join="inner").dropna()
-        correlation = (round(joined.corr().iloc[0, 1], 3)
-                       if len(joined) >= MIN_OVERLAP_DAYS else None)
+            joined = pd.concat([stock_ret, market_ret], axis=1, join="inner").dropna()
+            correlation = (round(joined.corr().iloc[0, 1], 3)
+                           if len(joined) >= MIN_OVERLAP_DAYS else None)
 
-        row = {
-            "Ticker": ticker,
-            "Company": meta["Company_Name"],
-            "Sector": meta["Sector"],
-            "Beta": calc_beta(stock_ret, market_ret),
-            "Sharpe_Ratio": calc_sharpe(stock_ret),
-            "Nifty_Correlation": correlation,
-            "Annual_Volatility_Pct": round(
-                stock_ret.std() * np.sqrt(TRADING_DAYS), 2
-            ) if stock_ret.notna().sum() >= MIN_OVERLAP_DAYS else None,
-            "Max_Drawdown_Pct": calc_max_drawdown(close),
-            "Return_1Y_Pct": calc_return_over(close, 1),
-            "Return_3Y_Pct": calc_return_over(close, 3),
-            "Return_5Y_Pct": calc_return_over(close, 5),
-            "Latest_RSI": (round(df["RSI_14"].dropna().iloc[-1], 2)
-                           if "RSI_14" in df and df["RSI_14"].notna().any() else None),
-            "Latest_Close": round(close.iloc[-1], 2),
-            "Last_Date": close.index.max().strftime("%Y-%m-%d"),
-            "Data_Points": len(df),
-        }
-        rows.append(row)
+            row = {
+                "Ticker": ticker,
+                "Company": meta["Company_Name"],
+                "Sector": meta["Sector"],
+                "Beta": calc_beta(stock_ret, market_ret),
+                "Sharpe_Ratio": calc_sharpe(stock_ret),
+                "Nifty_Correlation": correlation,
+                "Annual_Volatility_Pct": round(
+                    stock_ret.std() * np.sqrt(TRADING_DAYS), 2
+                ) if stock_ret.notna().sum() >= MIN_OVERLAP_DAYS else None,
+                "Max_Drawdown_Pct": calc_max_drawdown(close),
+                "Return_1Y_Pct": calc_return_over(close, 1),
+                "Return_3Y_Pct": calc_return_over(close, 3),
+                "Return_5Y_Pct": calc_return_over(close, 5),
+                "Latest_RSI": (round(df["RSI_14"].dropna().iloc[-1], 2)
+                               if "RSI_14" in df and df["RSI_14"].notna().any() else None),
+                "Latest_Close": round(close.iloc[-1], 2),
+                "Last_Date": close.index.max().strftime("%Y-%m-%d"),
+                "Data_Points": len(df),
+            }
+            rows.append(row)
 
-        print("  %-12s Beta=%-7s Sharpe=%-7s 1Y=%-8s pts=%d" % (
-            ticker,
-            row["Beta"], row["Sharpe_Ratio"], row["Return_1Y_Pct"], row["Data_Points"]
-        ))
+            print("  %-12s Beta=%-7s Sharpe=%-7s 1Y=%-8s pts=%d" % (
+                ticker,
+                row["Beta"], row["Sharpe_Ratio"], row["Return_1Y_Pct"], row["Data_Points"]
+            ))
+
+        except Exception as exc:
+            print("  %-12s SKIPPED - metric calculation failed: %s" % (ticker, exc))
+            rows.append({
+                "Ticker": ticker,
+                "Company": meta["Company_Name"],
+                "Sector": meta["Sector"],
+                "Data_Points": len(df) if df is not None else 0,
+            })
 
     out = pd.DataFrame(rows)
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)

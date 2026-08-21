@@ -29,7 +29,10 @@ Author: Atharva Phalak
 import os
 import sys
 import json
+import glob
 from datetime import datetime, timezone
+
+import pandas as pd
 
 # Scripts live alongside this file; make them importable regardless of
 # where the process was launched from. GitHub Actions runs from repo root,
@@ -83,6 +86,56 @@ def update_failure_counts(state, problem_tickers, all_attempted):
 
     state["consecutive_failures"] = counts
     return [t for t, n in counts.items() if n >= PERSISTENT_THRESHOLD]
+
+
+def check_freshness(max_stale_weekdays=3):
+    """
+    Detect a silently stalled feed.
+
+    The orchestrator already catches loud failures, but there is a quieter
+    one: Yahoo can return rows with a valid date and a NaN close. Those get
+    dropped as worthless, so every ticker reports "up to date" and the run
+    looks perfectly healthy while the dataset quietly ages.
+
+    This compares the newest date on disk against today, counting weekdays
+    only, and returns a warning string when the gap is too wide.
+
+    Weekday counting is a deliberate approximation -- it ignores exchange
+    holidays, so the threshold is set loose enough that a long weekend
+    plus a holiday will not trip it.
+    """
+    files = glob.glob(os.path.join("data", "historical", "*.csv"))
+    if not files:
+        return None, None
+
+    latest = None
+    for path in files:
+        try:
+            dates = pd.read_csv(path, usecols=["Date"])["Date"]
+            if dates.empty:
+                continue
+            newest = pd.to_datetime(dates).max()
+            if latest is None or newest > latest:
+                latest = newest
+        except Exception:
+            continue
+
+    if latest is None:
+        return None, None
+
+    today = pd.Timestamp(datetime.now(timezone.utc).date())
+    weekdays = len(pd.bdate_range(latest + pd.Timedelta(days=1), today)) if latest < today else 0
+
+    if weekdays > max_stale_weekdays:
+        return latest, (
+            "DATA IS STALE: newest row is %s, roughly %d weekdays behind.\n"
+            "  Every ticker may still report 'up to date' because the source\n"
+            "  is returning empty rows. Check the feed before trusting the\n"
+            "  dashboard."
+            % (latest.strftime("%Y-%m-%d"), weekdays)
+        )
+
+    return latest, None
 
 
 def write_status(summary):
@@ -172,12 +225,23 @@ def main():
     finished = datetime.now(timezone.utc)
     duration = (finished - started).total_seconds()
 
+    latest_date, stale_warning = check_freshness()
+
+    if stale_warning:
+        print("\n" + "!" * 64)
+        print(stale_warning)
+        print("!" * 64)
+
     lines = [
         "Last successful update: %s UTC" % finished.strftime("%Y-%m-%d %H:%M:%S"),
         "Duration: %.0f seconds" % duration,
         "Tickers updated: %d of %d" % (len(succeeded), total),
         "Bad ticks repaired this run: %d" % result["repaired"],
     ]
+    if latest_date is not None:
+        lines.insert(3, "Newest data point: %s" % latest_date.strftime("%Y-%m-%d"))
+    if stale_warning:
+        lines.append("WARNING: %s" % stale_warning.split("\n")[0])
     if problems:
         lines.append("Tickers with issues: %s" % ", ".join(problems))
     if persistent:
