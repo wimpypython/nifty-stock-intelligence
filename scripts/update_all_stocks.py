@@ -41,6 +41,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import fetch_historical
 import calculate_indicators
+import combine_data
 
 METADATA_DIR = "data/metadata"
 STATE_FILE = os.path.join(METADATA_DIR, "pipeline_state.json")
@@ -153,7 +154,7 @@ def main():
     print("=" * 64)
 
     # ---- Step 1: fetch price data ---------------------------------
-    print("\n[1/2] Fetching price data")
+    print("\n[1/3] Fetching price data")
     print("-" * 64)
     try:
         result = fetch_historical.fetch_all()
@@ -211,7 +212,7 @@ def main():
         print("\n  Transient issues (will retry next run): %s" % ", ".join(problems))
 
     # ---- Step 3: recompute cross-sectional metrics ----------------
-    print("\n[2/2] Recalculating metrics")
+    print("\n[2/3] Recalculating metrics")
     print("-" * 64)
     try:
         calculate_indicators.main()
@@ -220,6 +221,23 @@ def main():
         write_status("FAILED %s UTC - metrics crashed: %s\n"
                      % (started.strftime("%Y-%m-%d %H:%M:%S"), exc))
         return 1
+
+    # ---- Step 3.5: rebuild the Power BI fact table ----------------
+    # Power BI reads one combined file, not 51. Rebuilding it here keeps
+    # the dashboard's source in step with the per-ticker CSVs; skipping it
+    # would leave Power BI silently reading yesterday's data.
+    print("\n[3/3] Rebuilding combined fact table")
+    print("-" * 64)
+    try:
+        combine_rc = combine_data.main()
+        if combine_rc != 0:
+            print("\nWARNING: combine reported a problem (exit %d)." % combine_rc)
+            print("Per-ticker files are still valid; the Power BI feed may be stale.")
+    except Exception as exc:
+        # Non-fatal: the per-ticker data is already fetched and correct.
+        # Only the Power BI feed is affected, so warn rather than fail.
+        print("\nWARNING: combine step failed - %s" % exc)
+        print("Per-ticker data is intact. Power BI feed not refreshed.")
 
     # ---- Step 4: write the audit trail ----------------------------
     finished = datetime.now(timezone.utc)
