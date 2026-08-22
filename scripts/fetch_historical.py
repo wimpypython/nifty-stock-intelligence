@@ -111,6 +111,34 @@ def compute_bollinger(close, period=20, num_std=2):
     return upper, lower, width
 
 
+def round_significant(series, digits=6):
+    """
+    Round to a fixed number of SIGNIFICANT figures, not decimal places.
+
+    Fixed decimals assume every price lives in the same magnitude range.
+    They do not. Split- and dividend-adjusting a stock that has appreciated
+    enormously can drive its early prices into fractions of a paisa:
+    ADANIENT in 2002 adjusts to around 0.0501, where round(2) collapses
+    0.050081, 0.050145 and 0.050049 all to 0.05 -- wiping out the intraday
+    range and making every daily return exactly zero.
+
+    Significant figures preserve the same RELATIVE precision at any
+    magnitude, which is what return calculations actually depend on.
+    """
+    values = series.astype(float)
+    result = values.copy()
+
+    nonzero = values.notna() & (values != 0)
+    if nonzero.any():
+        magnitude = np.floor(np.log10(values[nonzero].abs()))
+        decimals = (digits - 1 - magnitude).astype(int)
+        result.loc[nonzero] = [
+            round(v, d) for v, d in zip(values[nonzero], decimals)
+        ]
+
+    return result
+
+
 def repair_price_spikes(df, jump=0.40, revert=0.20):
     """
     Repair isolated single-day price spikes -- bad ticks in the source feed.
@@ -146,11 +174,17 @@ def repair_price_spikes(df, jump=0.40, revert=0.20):
     if not bad.any():
         return df, 0
 
-    # Scale the whole OHLC row by one factor so intraday shape is preserved
+    # Scale the whole OHLC row by one factor so intraday shape is preserved.
+    # Only touch the flagged rows: applying a blanket round() here would
+    # re-round every row in the file, which previously destroyed precision
+    # on low-priced adjusted series (ADANIENT's 2002 prices, around 0.0501,
+    # collapsed to a flat 0.05 across 5,951 rows because one spike existed).
     fixed_close = (prev_c + next_c) / 2
-    factor = (fixed_close / close).where(bad, 1.0)
+    factor = fixed_close / close
+
     for col in ["Open", "High", "Low", "Close"]:
-        df[col] = (df[col] * factor).round(2)
+        repaired_values = df.loc[bad, col] * factor[bad]
+        df.loc[bad, col] = round_significant(repaired_values, 6)
 
     return df, int(bad.sum())
 
@@ -179,13 +213,16 @@ def add_indicators(df):
     df["Quarter"] = dates.dt.quarter
     df["Year_Month"] = dates.dt.to_period("M").astype(str)
 
+    # Prices and price-derived series use significant figures so precision
+    # survives at any magnitude. Percentages and bounded indicators are
+    # naturally scaled, so fixed decimals are fine for those.
     price_cols = ["Open", "High", "Low", "Close", "MA20", "MA50", "MA200",
                   "BB_Upper", "BB_Lower"]
     for col in price_cols:
-        df[col] = df[col].round(2)
-    for col in ["Daily_Return_Pct", "RSI_14", "BB_Width"]:
-        df[col] = df[col].round(3)
+        df[col] = round_significant(df[col], 6)
     for col in ["MACD", "MACD_Signal", "MACD_Hist"]:
+        df[col] = round_significant(df[col], 6)
+    for col in ["Daily_Return_Pct", "RSI_14", "BB_Width"]:
         df[col] = df[col].round(4)
 
     df.attrs["repaired"] = repaired
