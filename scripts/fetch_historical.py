@@ -218,7 +218,22 @@ def normalise_download(raw, ticker_name):
 
     df = df[["Date"] + required]
     df["Ticker"] = ticker_name
-    return df.dropna(subset=["Close"])
+
+    # Drop rows with no closing price. Yahoo sometimes returns a valid date
+    # with a NaN close for a session it has not finalised yet.
+    df = df.dropna(subset=["Close"])
+
+    # Drop rows with a non-positive price. No security trades at or below
+    # zero, so these are artefacts -- typically from back-adjusting a stock
+    # that has appreciated so much its early prices round away to nothing.
+    # ADANIENT is the example here: 47 rows in 2002 came back as -0.01
+    # alongside real volume. Left in, they produce meaningless returns and
+    # poison every rolling window that touches them.
+    invalid = (df[["Open", "High", "Low", "Close"]] <= 0).any(axis=1)
+    if invalid.any():
+        df = df[~invalid]
+
+    return df
 
 
 def get_last_saved_date(path):
