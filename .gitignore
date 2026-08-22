@@ -21,3 +21,4 @@ desktop.ini
 
 # Excel lock files -- these caused a permission error during Stage 1
 ~$*
+*.pbix 
