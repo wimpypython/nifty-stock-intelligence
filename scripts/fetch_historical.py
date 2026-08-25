@@ -17,7 +17,7 @@ Author: Atharva Phalak
 import os
 import time
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import numpy as np
@@ -29,6 +29,11 @@ METADATA_FILE = "data/metadata/nifty50_stocks.csv"
 INDEX_TICKER = "^NSEI"
 INDEX_NAME = "NIFTY50_INDEX"
 START_DATE = "2000-01-01"
+
+# NSE trades 09:15-15:30 IST. India has no DST, so a fixed offset is exact.
+IST = timezone(timedelta(hours=5, minutes=30))
+MARKET_CLOSE_HOUR = 15
+MARKET_CLOSE_MINUTE = 30
 REQUEST_DELAY = 0.4
 
 # Fixed column order. Incremental appends use header=False, so this must
@@ -270,7 +275,46 @@ def normalise_download(raw, ticker_name):
     if invalid.any():
         df = df[~invalid]
 
-    return df
+    return drop_incomplete_session(df)
+
+
+def market_is_open_now():
+    """True while NSE is mid-session (09:15-15:30 IST, weekdays)."""
+    now_ist = datetime.now(IST)
+    if now_ist.weekday() >= 5:
+        return False
+    close = now_ist.replace(hour=MARKET_CLOSE_HOUR, minute=MARKET_CLOSE_MINUTE,
+                            second=0, microsecond=0)
+    open_t = now_ist.replace(hour=9, minute=15, second=0, microsecond=0)
+    return open_t <= now_ist < close
+
+
+def drop_incomplete_session(df):
+    """
+    Remove today's row when the market has not closed yet.
+
+    Yahoo publishes a bar for the current session as soon as trading opens,
+    and it looks like any other row -- same columns, plausible prices. On
+    2026-08-25 a 09:38 IST run captured RELIANCE with 466,478 volume against
+    a normal 5-7 million, because only twenty minutes had traded. Written to
+    disk it becomes indistinguishable from a real close and feeds every
+    rolling indicator.
+
+    Dropping it costs nothing: the next run picks up the complete bar.
+    """
+    if df.empty:
+        return df
+
+    now_ist = datetime.now(IST)
+    close_time = now_ist.replace(hour=MARKET_CLOSE_HOUR,
+                                 minute=MARKET_CLOSE_MINUTE,
+                                 second=0, microsecond=0)
+
+    if now_ist >= close_time:
+        return df   # session finished, today's bar is final
+
+    today = pd.Timestamp(now_ist.date())
+    return df[df["Date"] < today]
 
 
 def get_last_saved_date(path):
@@ -301,7 +345,13 @@ def fetch_ticker(yahoo_ticker, save_name):
         fetch_from = START_DATE
         mode = "full"
     else:
-        if last_date.date() >= today - timedelta(days=1):
+        # If the newest stored row is today's and the session is still
+        # running, that row is partial and MUST be re-fetched -- otherwise
+        # the early return below would freeze it in place permanently.
+        holds_partial = (last_date.date() == datetime.now(IST).date()
+                         and market_is_open_now())
+
+        if not holds_partial and last_date.date() >= today - timedelta(days=1):
             return "up to date"
         fetch_from = (last_date - timedelta(days=LOOKBACK_ROWS * 2)).strftime("%Y-%m-%d")
         mode = "incremental"
@@ -329,13 +379,20 @@ def fetch_ticker(yahoo_ticker, save_name):
     existing = pd.read_csv(path, parse_dates=["Date"])
     combined = pd.concat([existing, fresh], ignore_index=True)
     combined = combined.drop_duplicates(subset=["Date"], keep="last")
+    combined = drop_incomplete_session(combined)
     combined = add_indicators(combined)[COLUMNS]
 
     new_rows = combined[combined["Date"] > last_date]
+
+    # Rewrite the whole file rather than appending only the new rows.
+    # drop_duplicates(keep="last") above lets freshly downloaded data
+    # replace what is already on disk, so a row saved while its session
+    # was still in progress gets corrected once the real close exists.
+    # Append-only would leave that partial bar in place permanently.
+    combined.to_csv(path, index=False)
+
     if new_rows.empty:
         return "up to date"
-
-    new_rows.to_csv(path, mode="a", header=False, index=False)
     return "+%d rows" % len(new_rows)
 
 
