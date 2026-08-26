@@ -1,5 +1,5 @@
-Last successful update: 2026-08-25 05:11:40 UTC
-Duration: 89 seconds
+Last successful update: 2026-08-26 04:10:41 UTC
+Duration: 46 seconds
 Tickers updated: 51 of 51
-Newest data point: 2026-08-24
+Newest data point: 2026-08-25
 Bad ticks repaired this run: 0
