@@ -392,9 +392,20 @@ def audit_against_yahoo(sample_size):
                       "none", warn_only=True)
                 continue
 
-            # 6 significant figures means ~1e-6 relative tolerance
+            # Tolerance has to accommodate two legitimate sources of drift:
+            #
+            #   1. Prices are stored at 6 significant figures, which permits
+            #      up to 5e-6 relative error by construction.
+            #   2. auto_adjust=True means Yahoo re-adjusts the ENTIRE history
+            #      whenever a new dividend or split occurs, so a 2016 price
+            #      genuinely shifts slightly after a recent corporate action.
+            #      A file written before that adjustment will differ from the
+            #      live feed by a small amount, permanently.
+            #
+            # 1e-4 still catches real corruption by orders of magnitude -- a
+            # genuine mismatch shows up in rupees, not ten-thousandths.
             ok = np.allclose(stored.loc[common, "Close"],
-                             live.loc[common, "Close"], rtol=2e-6)
+                             live.loc[common, "Close"], rtol=1e-4)
             detail = "%d days from %s" % (len(common), start.strftime("%Y-%m-%d"))
             if not ok:
                 diffs = (stored.loc[common, "Close"] - live.loc[common, "Close"]).abs()
