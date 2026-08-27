@@ -1,0 +1,44 @@
+name: Staleness Alert
+
+# Runs LATER in the day than the pipeline, on purpose.
+#
+# The daily update fires at 09:00 IST and has been observed landing between
+# 09:34 and 09:39. Checking at 12:00 IST leaves nearly three hours of margin,
+# so a merely-slow run does not trigger a false alarm.
+#
+# This workflow reads the COMMITTED state of the repository. It does not fetch
+# anything. It answers one question: is the data anyone reads actually recent?
+
+on:
+  schedule:
+    - cron: '30 6 * * 2-6'    # Tue-Sat 06:30 UTC = 12:00 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-staleness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check data freshness
+        id: staleness
+        run: python scripts/check_staleness.py
+
+      - name: Write summary
+        if: always()
+        run: |
+          echo "### Staleness check" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat data/metadata/last_updated.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

@@ -1,11 +1,12 @@
 name: Daily Nifty 50 Data Update
 
-# NSE closes at 15:30 IST (10:00 UTC). Running at 18:30 UTC (midnight IST)
-# leaves Yahoo several hours to finalise the day's numbers.
+# NSE closes at 15:30 IST (10:00 UTC). Running at 03:30 UTC (09:00 IST) the
+# NEXT morning leaves Yahoo several hours to finalise the day's numbers.
 #
 # GitHub's scheduler is best-effort and often runs late under load. That is
 # fine here: the fetch is incremental, so a late or skipped run simply picks
 # up whatever is missing on the next pass.
+
 on:
   schedule:
     - cron: '30 3 * * 2-6'    # Tue-Sat 03:30 UTC = 09:00 IST, picks up the
@@ -47,11 +48,23 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
+
+          # The commit message records the DATA date, not just the run time.
+          # A run on the 27th that collects the 26th's session is a commit
+          # about the 26th. Labelling it "2026-08-27" makes the repo's front
+          # page read as more current than the data actually is.
+          DATA_DATE=$(sed -n 's/^Newest data point: \([0-9-]*\).*/\1/p' \
+                      data/metadata/last_updated.txt | head -n 1)
+          if [ -z "$DATA_DATE" ]; then
+            DATA_DATE="unknown"
+          fi
+          RUN_TIME=$(date -u '+%Y-%m-%d %H:%M UTC')
+
           # No changes on a holiday or a re-run is normal, not an error.
           if git diff --staged --quiet; then
             echo "No data changes to commit."
           else
-            git commit -m "Auto-update: $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git commit -m "Auto-update: data through $DATA_DATE (run $RUN_TIME)"
             git push
           fi
 
