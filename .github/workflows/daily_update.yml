@@ -42,6 +42,14 @@ jobs:
         id: pipeline
         run: python scripts/update_all_stocks.py
 
+      # Fetch success is not data currency. This records which tickers
+      # actually carry the newest session, and appends the finding to
+      # last_updated.txt so it becomes part of the committed audit trail.
+      # It always exits 0 - enforcement happens after the commit.
+      - name: Check ticker coverage
+        if: success()
+        run: python scripts/check_coverage.py
+
       - name: Commit updated data
         if: success()
         run: |
@@ -67,6 +75,13 @@ jobs:
             git commit -m "Auto-update: data through $DATA_DATE (run $RUN_TIME)"
             git push
           fi
+
+      # Deliberately AFTER the commit. A ticker stuck for three runs is a
+      # real problem worth a red X and an email, but withholding 50 healthy
+      # tickers' data to signal it would help nobody. Publish, then alert.
+      - name: Enforce coverage
+        if: success()
+        run: python scripts/check_coverage.py --enforce
 
       # Surface the run summary in the Actions UI so a failure is readable
       # without digging through logs.
