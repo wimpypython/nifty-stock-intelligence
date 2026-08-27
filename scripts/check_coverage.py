@@ -20,12 +20,47 @@ dataset stalls - it looks at the newest date across all files. This catches
 the quieter case where most tickers advance and a handful do not, which the
 max-across-all-files calculation hides completely.
 
+HOW THE EXPECTED SESSION IS DEFINED - AND WHY NOT max()
+-------------------------------------------------------
+The first version of this script used max(date across all tickers) as the
+expected session. That was wrong, and the run of 27 August 2026 at 19:57 IST
+proved it within a day.
+
+That run happened after the 15:30 close, so filter #3 in the fetch step no
+longer suppressed the in-progress session. Nine tickers - the same nine that
+had been lagging - carry Yahoo's same-day bar earlier than the rest. They
+picked up 27 August. The other 42, which Yahoo had not yet finalised,
+correctly stayed at 26 August.
+
+max() then declared the expected session to be 27 August and reported 42 of
+51 tickers "behind" - a false alarm covering 82% of the index, on data that
+was entirely correct. Left alone it would have turned the workflow red in
+three runs and trained the reader to ignore it. Exactly the cry-wolf failure
+the staleness threshold was tuned to avoid.
+
+max() handles laggards well and leaders terribly. It is a one-sided statistic
+being asked a two-sided question.
+
+The MEDIAN is robust in both directions. A minority ahead cannot drag the
+expectation forward; a minority behind cannot drag it back. Tickers ahead of
+the median are reported separately and never counted as lag - being ahead is
+not a fault.
+
+    26 Aug run:   42 at 26th,  9 at 25th   -> median 26th ->  9 behind
+    27 Aug run:    9 at 27th, 42 at 26th   -> median 26th ->  0 behind,
+                                                              9 ahead
+
+The expected session is still DERIVED from the data, never TODAY(). Today is
+frequently not a trading day - weekends, exchange holidays and the T+1
+design all guarantee it. Same reasoning as bug 6.16: a date the code computes
+from what is actually there cannot go stale; a date someone typed in can.
+
 DESIGN: WHY THIS DOES NOT BLOCK THE COMMIT
 ------------------------------------------
-Refusing to commit because 10 of 51 tickers lag would discard 41 tickers of
-good data to avoid publishing 10 stale ones - and the lag is self-healing,
-so it would do that repeatedly. On 28 August five of those tickers gained
-+2 rows and caught up on their own.
+Refusing to commit because some tickers lag would discard the majority's
+good data to avoid publishing a stale minority - and the lag is
+self-healing. The nine tickers behind on 26 August gained +2 rows and caught
+up on their own.
 
 So this mirrors the orchestrator's own transient/persistent split:
 
@@ -117,6 +152,21 @@ def latest_date_per_ticker():
     return results
 
 
+def median_date(dates):
+    """
+    Middle value of a list of dates.
+
+    For an even count this takes the LOWER of the two middle values rather
+    than averaging them. Averaging two dates can produce a day the exchange
+    never traded, and the expected session must be a real session.
+    Rounding down is the conservative direction: it treats fewer tickers as
+    behind, and a false alarm is more costly here than a missed one, since
+    a persistent stall will still be caught on the following run.
+    """
+    ordered = sorted(dates)
+    return ordered[(len(ordered) - 1) // 2]
+
+
 def report():
     """Compute coverage, update state, append to the audit trail."""
     per_ticker = latest_date_per_ticker()
@@ -132,13 +182,11 @@ def report():
         print("No readable dates in any file - cannot assess coverage.")
         return 0
 
-    # The expected date is the newest any ticker reached. Deliberately NOT
-    # "today": exchange holidays, weekends and the T+1 design all mean
-    # today is often not a trading day. The market itself defines the
-    # newest session, and at least one ticker will have it.
-    expected = max(dated.values())
+    expected = median_date(list(dated.values()))
+    newest_anywhere = max(dated.values())
 
     behind = sorted(t for t, d in dated.items() if d < expected)
+    ahead = sorted(t for t, d in dated.items() if d > expected)
     current = len(dated) - len(behind)
     total = len(dated)
     pct_behind = (100.0 * len(behind) / total) if total else 0.0
@@ -146,9 +194,12 @@ def report():
     print("=" * 64)
     print("COVERAGE CHECK")
     print("=" * 64)
-    print("Newest session in dataset : %s" % expected)
-    print("Tickers current           : %d of %d" % (current, total))
+    print("Expected session (median) : %s" % expected)
+    print("Newest bar anywhere       : %s" % newest_anywhere)
+    print("Tickers at or past it     : %d of %d" % (current, total))
     print("Tickers behind            : %d (%.1f%%)" % (len(behind), pct_behind))
+    if ahead:
+        print("Tickers ahead             : %d" % len(ahead))
     if unreadable:
         print("Unreadable files          : %s" % ", ".join(unreadable))
     print()
@@ -168,6 +219,15 @@ def report():
 
     persistent = sorted(t for t, n in counts.items()
                         if n >= PERSISTENT_LAG_THRESHOLD)
+
+    if ahead:
+        print("Ahead of the expected session (NOT a fault):")
+        for ticker in ahead:
+            print("  %-16s %s" % (ticker, dated[ticker]))
+        print()
+        print("Some tickers carry Yahoo's same-day bar sooner than others.")
+        print("This is a vendor cadence difference, not a data problem.")
+        print()
 
     if behind:
         print("Behind by ticker:")
@@ -194,13 +254,15 @@ def report():
         print("the way TATAMOTORS did after the October 2025 demerger.")
         print("!" * 64)
     elif not behind:
-        print("All tickers carry the newest session.")
+        print("All tickers carry the expected session or better.")
 
-    append_to_status(expected, current, total, behind, persistent)
+    append_to_status(expected, newest_anywhere, current, total,
+                     behind, ahead, persistent)
     return 0
 
 
-def append_to_status(expected, current, total, behind, persistent):
+def append_to_status(expected, newest_anywhere, current, total,
+                     behind, ahead, persistent):
     """
     Add coverage lines to last_updated.txt.
 
@@ -212,9 +274,13 @@ def append_to_status(expected, current, total, behind, persistent):
     if not os.path.exists(STATUS_FILE):
         return
 
-    lines = ["Tickers with newest session: %d of %d" % (current, total)]
+    lines = ["Expected session (median): %s" % expected,
+             "Tickers at or past expected session: %d of %d" % (current, total)]
+    if ahead:
+        lines.append("Tickers ahead of expected session (%s): %s"
+                     % (newest_anywhere, ", ".join(ahead)))
     if behind:
-        lines.append("Tickers behind newest session (%s): %s"
+        lines.append("Tickers behind expected session (%s): %s"
                      % (expected, ", ".join(behind)))
     if persistent:
         lines.append("PERSISTENT LAG - not updating: %s" % ", ".join(persistent))
