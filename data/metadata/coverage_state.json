@@ -1,0 +1,14 @@
+{
+  "consecutive_lag": {
+    "APOLLOHOSP": 1,
+    "AXISBANK": 1,
+    "BAJAJFINSV": 1,
+    "BRITANNIA": 1,
+    "DIVISLAB": 1,
+    "EICHERMOT": 1,
+    "M&M": 1,
+    "SBILIFE": 1,
+    "TATACONSUM": 1
+  },
+  "last_expected_date": "2026-08-26"
+}
