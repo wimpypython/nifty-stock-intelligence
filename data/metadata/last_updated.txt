@@ -1,7 +1,8 @@
-Last successful update: 2026-08-27 14:27:32 UTC
-Duration: 30 seconds
+Last successful update: 2026-08-28 15:35:10 UTC
+Duration: 47 seconds
 Tickers updated: 51 of 51
-Newest data point: 2026-08-27
+Newest data point: 2026-08-28
 Bad ticks repaired this run: 0
-Tickers with newest session: 9 of 51
-Tickers behind newest session (2026-08-27): ADANIENT, ADANIPORTS, ASIANPAINT, BAJAJ-AUTO, BAJFINANCE, BHARTIARTL, BPCL, CIPLA, COALINDIA, DRREDDY, GRASIM, HCLTECH, HDFCBANK, HDFCLIFE, HEROMOTOCO, HINDALCO, HINDUNILVR, ICICIBANK, INDUSINDBK, INFY, ITC, JSWSTEEL, KOTAKBANK, LT, MARUTI, NESTLEIND, NIFTY50_INDEX, NTPC, ONGC, POWERGRID, RELIANCE, SBIN, SHRIRAMFIN, SUNPHARMA, TATASTEEL, TCS, TECHM, TITAN, TMPV, TRENT, ULTRACEMCO, WIPRO
+Expected session (median): 2026-08-28
+Tickers at or past expected session: 42 of 51
+Tickers behind expected session (2026-08-28): APOLLOHOSP, AXISBANK, BAJAJFINSV, BRITANNIA, DIVISLAB, EICHERMOT, M&M, SBILIFE, TATACONSUM
