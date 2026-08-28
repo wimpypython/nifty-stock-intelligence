@@ -317,6 +317,62 @@ def drop_incomplete_session(df):
     return df[df["Date"] < today]
 
 
+def newest_available_session():
+    """
+    The most recent date for which a FINAL daily bar can exist.
+
+    This exists because of a bug found on 2026-08-28. The skip rule below
+    used to ask "does this ticker already hold YESTERDAY's bar?" and skip
+    it if so. That is correct only when the run happens before the market
+    closes -- which was the unstated assumption, because the pipeline was
+    designed to run at 09:00 IST.
+
+    GitHub's scheduler broke that assumption. On 27 and 28 August the runs
+    fired at 19:57 and 21:05 IST, hours after the close. On the 28th, 42
+    tickers held the 26th and were fetched, gaining the 27th and 28th. The
+    other nine held the 27th, so "last_date >= today - 1" was TRUE and they
+    were skipped -- even though the 28th had closed six hours earlier and
+    Yahoo had the data.
+
+    The two groups then swapped sides on every late run: whichever group
+    was behind got fetched and jumped ahead; whichever was current got
+    skipped and fell behind. The run log said "51 of 51 succeeded" every
+    time, because a skipped ticker is not a failure.
+
+    Asking for the newest session that ACTUALLY EXISTS fixes it. Before the
+    close, that is the previous trading day and behaviour is unchanged.
+    After the close, it is today, so a ticker holding yesterday is fetched
+    rather than skipped.
+
+    Weekend handling: on Saturday or Sunday this walks back to Friday, so a
+    ticker already holding Friday is correctly skipped rather than being
+    re-fetched pointlessly all weekend.
+
+    Exchange holidays are NOT modelled. On a holiday this returns a date the
+    market never traded, so every ticker looks one session behind and gets
+    fetched. Yahoo returns nothing new, the run reports "up to date", and
+    nothing is written. The cost is 51 wasted calls a few times a year --
+    far cheaper than maintaining an NSE holiday calendar, and it fails in
+    the safe direction: fetching too often, never too rarely.
+    """
+    now_ist = datetime.now(IST)
+    close_time = now_ist.replace(hour=MARKET_CLOSE_HOUR,
+                                 minute=MARKET_CLOSE_MINUTE,
+                                 second=0, microsecond=0)
+
+    candidate = now_ist.date()
+    closed_today = candidate.weekday() < 5 and now_ist >= close_time
+
+    if not closed_today:
+        candidate -= timedelta(days=1)
+
+    # Walk back over the weekend to the last weekday.
+    while candidate.weekday() >= 5:
+        candidate -= timedelta(days=1)
+
+    return candidate
+
+
 def get_last_saved_date(path):
     """Most recent Date already stored, or None if the file does not exist."""
     if not os.path.exists(path):
@@ -339,7 +395,12 @@ def fetch_ticker(yahoo_ticker, save_name):
     """
     path = os.path.join(HISTORICAL_DIR, save_name + ".csv")
     last_date = get_last_saved_date(path)
-    today = datetime.today().date()
+
+    # IST, not the runner's clock. GitHub Actions runners are on UTC, and
+    # between 00:00 and 05:30 IST the UTC date is a day behind -- which
+    # would silently compute the wrong end date for the download window.
+    # Every other time calculation in this file is IST; this one was not.
+    today = datetime.now(IST).date()
 
     if last_date is None:
         fetch_from = START_DATE
@@ -351,7 +412,10 @@ def fetch_ticker(yahoo_ticker, save_name):
         holds_partial = (last_date.date() == datetime.now(IST).date()
                          and market_is_open_now())
 
-        if not holds_partial and last_date.date() >= today - timedelta(days=1):
+        # Skip only if the ticker already holds the newest session that can
+        # exist. See newest_available_session() for why this is not
+        # "today - 1 day".
+        if not holds_partial and last_date.date() >= newest_available_session():
             return "up to date"
         fetch_from = (last_date - timedelta(days=LOOKBACK_ROWS * 2)).strftime("%Y-%m-%d")
         mode = "incremental"
