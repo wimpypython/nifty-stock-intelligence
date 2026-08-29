@@ -10,6 +10,8 @@ Current data freshness is recorded in
 [`data/metadata/last_updated.txt`](data/metadata/last_updated.txt), which the pipeline
 rewrites on every run.
 
+Topics: power-bi, dax, etl, python, github-actions, data-engineering, nifty50, yfinance, data-pipeline, star-schema
+
 ---
 
 ## What it does
