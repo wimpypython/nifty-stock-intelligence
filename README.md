@@ -10,8 +10,6 @@ Current data freshness is recorded in
 [`data/metadata/last_updated.txt`](data/metadata/last_updated.txt), which the pipeline
 rewrites on every run.
 
-Topics: power-bi, dax, etl, python, github-actions, data-engineering, nifty50, yfinance, data-pipeline, star-schema
-
 ---
 
 ## What it does
@@ -150,6 +148,30 @@ At that magnitude `round(2)` collapses `0.050081`, `0.050145` and `0.050049` all
 Six significant figures hold the same *relative* precision at any magnitude. That's
 what return calculations actually depend on.
 
+### One measurement window for every risk metric
+
+Beta and correlation were always computed on an inner join against the benchmark, so
+they only ever saw overlapping dates. Sharpe, volatility and drawdown were not, and
+ran over each stock's entire history instead.
+
+That was quietly comparing different things. It also broke on ADANIENT, whose
+split-adjusted 2003 prices sit at ₹0.58, where a single tick is a +744% daily return.
+Two rows like that inflated the standard deviation of the whole series and produced
+162.78% annualised volatility against a 35.57% median. A card labelled "typical
+yearly swing" was reading 162.78.
+
+All five now measure from the benchmark's start date, 2007-09-17, and
+`stock_metrics.csv` carries a `Risk_Window_Start` column so the window is auditable
+rather than something you'd have to read the code to discover. Returns are
+deliberately excluded from this, since they anchor on the most recent date and look
+back a fixed period, so early history can't reach them.
+
+Restricting the window shifted the whole Sharpe distribution down, from a median near
+0.47 to 0.36, which meant the plain-language thresholds had to be recalibrated too.
+They now sit on the quartile boundaries of the current distribution. Those labels make
+a claim about where a stock sits among its peers, so they're only true relative to the
+distribution they were tuned against.
+
 ### Bad-tick repair with a revert test
 
 A bad tick jumps hugely and snaps straight back. A real event, like a split or a crash
@@ -182,6 +204,12 @@ carries its own test suite:
 | `verify_stage6.py` | Diffs before/after measure exports to prove a change was value-neutral |
 | `check_coverage.py` | Whether every ticker actually holds the newest session |
 | `check_staleness.py` | Whether the committed data is actually recent |
+
+The metrics run carries its own guard too: any ticker whose annualised volatility
+exceeds three times the median gets flagged in the output. A Nifty 50 constituent
+running at several times the median is far more likely to be a data artefact than a
+real characteristic, and that is exactly how the ADANIENT contamination announced
+itself.
 
 Independence is the point. The pipeline computes Beta as `Cov(x,y)/Var(y)`; the audit
 re-derives it as a least-squares regression slope. Two different methods agreeing is
@@ -240,23 +268,36 @@ second account existed in the tenant.
 
 These affect how the numbers should be read.
 
-**ADANIENT's Sharpe and volatility are inflated.** Both get computed over the full
-return history without the index join that Beta and correlation use, so pre-2007
-split-adjusted prices distort them. One ticker out of fifty. Beta, correlation and
-returns are unaffected. Queued for the next iteration.
+**Structural breaks aren't adjusted for.** TMPV (2025 demerger), ADANIENT (2015
+demerger) and BAJAJFINSV (2008 demerger from Bajaj Auto) all show large single-day
+declines that reflect corporate actions rather than market moves. These feed
+`Max_Drawdown_Pct`, so a "worst ever fall" figure can include a day the company
+restructured rather than a day the market sold off. Separating the two needs a
+corporate-actions feed this project doesn't have.
 
 **Not every ticker carries the same session on a given day.** Nine of them become
 available to the pipeline later than the other 42, so the dashboard can sit at T+1 for
 most stocks and T+2 for those nine. The coverage check reports it on every run, and
 the following run resolves it.
 
-**Structural breaks aren't adjusted for.** TMPV (2025 demerger) and ADANIENT (2015
-demerger) both show large single-day declines that reflect corporate actions rather
-than market moves. These feed `Max_Drawdown_Pct`.
-
 **Sector coverage is partial by design.** The Nifty IT index has ten constituents.
 This project covers the five that are also in the Nifty 50, so "IT sector" here means
 the IT stocks within the Nifty 50.
+
+---
+
+## How this was built
+
+Nine stages, each gated on verifying the previous one. Twenty bugs found and fixed
+along the way, and almost none of them threw an error — a hard-coded Date table end
+that would have expired in 2028, a skip rule that quietly stopped fetching tickers
+that already held yesterday's bar, an outlier statistic that made one stock look four
+times more volatile than the index.
+
+The pattern repeated often enough to become the working rule: a wrong number that
+looks reasonable is more dangerous than a crash, because nothing tells you to look.
+Every stage therefore ends with a check against something independent — a second
+calculation, an external source, or a value predicted in advance and then observed.
 
 ---
 
