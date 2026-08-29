@@ -60,6 +60,47 @@ def load_prices(ticker):
     return df.sort_values("Date").set_index("Date")
 
 
+def restrict_to_index_window(series, index_start):
+    """
+    Trim a series to the period the benchmark also covers.
+
+    WHY THIS EXISTS
+    ---------------
+    Beta and correlation were always safe: they use an inner join against the
+    index, so they only ever saw overlapping dates. Sharpe, volatility and
+    drawdown did not - they were computed over a stock's ENTIRE history.
+
+    For most tickers that made no difference. For ADANIENT it did. Its
+    split-adjusted prices in 2003 and 2004 sit at 0.58 and 2.84 rupees, and at
+    that magnitude a single tick is a huge percentage: two daily returns of
+    +744% and +109%. Those two rows inflated the standard deviation of the
+    whole series, producing 162.78% annualised volatility against a 35.57%
+    median across the index. A card labelled "typical yearly swing" was
+    reading 162.78.
+
+    The benchmark begins 2007-09-17. Restricting these three metrics to that
+    window removes the artefacts and, more importantly, makes every risk
+    metric describe the SAME period. Reporting a Beta measured over 2007+
+    beside a volatility measured over 2000+ was quietly comparing two
+    different things.
+
+    WHAT THIS DOES NOT FIX
+    ----------------------
+    Structural breaks after the index start date. ADANIENT's 2015 demerger
+    (-38.7% in one session) and TMPV's 2025 demerger both sit inside the
+    window and still feed Max_Drawdown_Pct. Those are corporate actions, not
+    data errors, and separating them from genuine market declines needs a
+    corporate-actions feed this project does not have.
+
+    Returns (1Y/3Y/5Y) are deliberately NOT restricted. They anchor from the
+    most recent date and look backwards a fixed period, so early history
+    cannot reach them.
+    """
+    if index_start is None:
+        return series
+    return series[series.index >= index_start]
+
+
 def calc_beta(stock_ret, market_ret):
     """
     Beta = Cov(stock, market) / Var(market)
@@ -137,7 +178,11 @@ def main():
         return
 
     market_ret = index_df["Daily_Return_Pct"].rename("market")
-    print("Benchmark loaded: %d trading days\n" % len(index_df))
+    index_start = index_df.index.min()
+    print("Benchmark loaded: %d trading days" % len(index_df))
+    print("Benchmark starts: %s" % index_start.strftime("%Y-%m-%d"))
+    print("Sharpe, volatility and drawdown are measured from this date so")
+    print("every risk metric describes the same period.\n")
 
     stocks = pd.read_csv(METADATA_FILE)
     rows = []
@@ -171,6 +216,13 @@ def main():
             stock_ret = df["Daily_Return_Pct"].rename("stock")
             close = df["Close"]
 
+            # Sharpe, volatility and drawdown are measured over the benchmark
+            # window so they cannot be distorted by pre-benchmark history and
+            # so they describe the same period as Beta and correlation.
+            # See restrict_to_index_window() for why.
+            windowed_ret = restrict_to_index_window(stock_ret, index_start)
+            windowed_close = restrict_to_index_window(close, index_start)
+
             joined = pd.concat([stock_ret, market_ret], axis=1, join="inner").dropna()
             correlation = (round(joined.corr().iloc[0, 1], 3)
                            if len(joined) >= MIN_OVERLAP_DAYS else None)
@@ -180,12 +232,13 @@ def main():
                 "Company": meta["Company_Name"],
                 "Sector": meta["Sector"],
                 "Beta": calc_beta(stock_ret, market_ret),
-                "Sharpe_Ratio": calc_sharpe(stock_ret),
+                "Sharpe_Ratio": calc_sharpe(windowed_ret),
                 "Nifty_Correlation": correlation,
                 "Annual_Volatility_Pct": round(
-                    stock_ret.std() * np.sqrt(TRADING_DAYS), 2
-                ) if stock_ret.notna().sum() >= MIN_OVERLAP_DAYS else None,
-                "Max_Drawdown_Pct": calc_max_drawdown(close),
+                    windowed_ret.std() * np.sqrt(TRADING_DAYS), 2
+                ) if windowed_ret.notna().sum() >= MIN_OVERLAP_DAYS else None,
+                "Max_Drawdown_Pct": (calc_max_drawdown(windowed_close)
+                                     if len(windowed_close) else None),
                 "Return_1Y_Pct": calc_return_over(close, 1),
                 "Return_3Y_Pct": calc_return_over(close, 3),
                 "Return_5Y_Pct": calc_return_over(close, 5),
@@ -194,6 +247,11 @@ def main():
                 "Latest_Close": round(close.iloc[-1], 2),
                 "Last_Date": close.index.max().strftime("%Y-%m-%d"),
                 "Data_Points": len(df),
+                # The window actually used for the risk metrics. Stored so the
+                # figure is auditable rather than something a reader has to
+                # infer from the code.
+                "Risk_Window_Start": (windowed_close.index.min().strftime("%Y-%m-%d")
+                                      if len(windowed_close) else None),
             }
             rows.append(row)
 
@@ -223,6 +281,26 @@ def main():
     if complete:
         print("Beta range   : %.2f to %.2f" % (out["Beta"].min(), out["Beta"].max()))
         print("Median Sharpe: %.2f" % out["Sharpe_Ratio"].median())
+
+    # Volatility outlier guard. A Nifty 50 constituent running at several
+    # times the median annualised volatility is far more likely to be a data
+    # artefact than a real characteristic - that is exactly how the ADANIENT
+    # contamination showed itself. Warn rather than fail: the metrics are
+    # still written, but the run says so out loud.
+    vol = out["Annual_Volatility_Pct"].dropna()
+    if len(vol):
+        median_vol = vol.median()
+        outliers = out[out["Annual_Volatility_Pct"] > 3 * median_vol]
+        print("Median annual volatility: %.2f%%" % median_vol)
+        if len(outliers):
+            print()
+            print("WARNING: %d ticker(s) above 3x the median volatility."
+                  % len(outliers))
+            print("Check for split-adjustment artefacts or structural breaks:")
+            for _, r in outliers.iterrows():
+                print("  %-12s %.2f%%  (from %s)"
+                      % (r["Ticker"], r["Annual_Volatility_Pct"],
+                         r.get("Risk_Window_Start", "?")))
     print("=" * 64)
 
 

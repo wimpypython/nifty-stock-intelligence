@@ -98,21 +98,36 @@ def sharpe_label(sr):
 
     These are calibrated to the Nifty 50 universe, NOT to textbook values.
     The usual ">1.0 is good" convention comes from portfolio and fund
-    analysis; individual stocks measured over 20+ years sit well below it.
-    In this dataset Sharpe runs 0.11 to 0.86 with a median near 0.47, so a
-    threshold at 1.0 would leave a tier no stock could ever reach and would
-    label the best performer "reasonable".
+    analysis; individual stocks measured over a single index cycle sit well
+    below it. A threshold at 1.0 would leave a tier no stock could ever
+    reach and would label the best performer "reasonable".
 
-    The wording states the frame of reference so the label cannot be
-    misread as an absolute claim.
+    RECALIBRATED after bug 18. Sharpe was previously computed over each
+    stock's full price history, which meant every ticker was measured over a
+    different period and a few were contaminated by pre-benchmark data. It is
+    now measured over the benchmark window (2007-09-17 onward) for all 50,
+    which shifted the whole distribution down:
+
+        before   0.11 to 0.86, median 0.47
+        after    0.12 to 0.84, median 0.36
+
+    The old boundaries (0.70 / 0.45 / 0.25) sat above the new median, so a
+    genuinely mid-table stock would have been labelled "below average". The
+    new ones (0.50 / 0.36 / 0.30) land on the quartile boundaries of the
+    current distribution, giving a roughly 24/28/24/24 split with the median
+    stock on the above/below line rather than inside the lower tier.
+
+    These need revisiting if the risk window ever changes again. The labels
+    make a claim about where a stock sits among its peers, so they are only
+    true relative to the distribution they were tuned against.
     """
     if sr is None or pd.isna(sr):
         return "Risk-adjusted return not available"
-    if sr > 0.70:
+    if sr > 0.50:
         return "Top tier among Nifty 50 stocks"
-    if sr > 0.45:
+    if sr > 0.36:
         return "Above average among Nifty 50 stocks"
-    if sr > 0.25:
+    if sr > 0.30:
         return "Below average among Nifty 50 stocks"
     if sr > 0:
         return "Bottom tier among Nifty 50 stocks"
@@ -136,9 +151,21 @@ def recompute_beta(df, index_df):
     return float(np.polyfit(joined.iloc[:, 1], joined.iloc[:, 0], 1)[0])
 
 
-def recompute_sharpe(df, risk_free=0.065, trading_days=252):
-    """Sharpe recomputed from daily returns."""
-    r = df["Daily_Return_Pct"].dropna()
+def recompute_sharpe(df, index_df, risk_free=0.065, trading_days=252):
+    """
+    Sharpe recomputed from daily returns, over the benchmark window.
+
+    The window restriction is not optional here. The pipeline measures Sharpe
+    from the index start date (bug 18); recomputing over full history would
+    produce a different number for any stock listed before 2007 and make this
+    check report a disagreement that is not a bug. A cross-check has to use
+    the same definition, or it is checking the wrong thing.
+    """
+    r = df["Daily_Return_Pct"]
+    if index_df is not None and not index_df.empty:
+        index_start = index_df["Date"].min()
+        r = r[df["Date"] >= index_start]
+    r = r.dropna()
     if len(r) < 60:
         return None
     daily_rf = (risk_free / trading_days) * 100
@@ -315,7 +342,7 @@ def compute(ticker, meta, metrics, index_df):
     out["Sharpe Label"] = sharpe_label(sharpe)
 
     check_beta = recompute_beta(df, index_df)
-    check_sharpe = recompute_sharpe(df)
+    check_sharpe = recompute_sharpe(df, index_df)
     if check_beta is not None and pd.notna(beta):
         out["  (Beta recomputed)"] = check_beta
     if check_sharpe is not None and pd.notna(sharpe):
