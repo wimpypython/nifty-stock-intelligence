@@ -1,14 +1,15 @@
 {
   "consecutive_lag": {
-    "APOLLOHOSP": 2,
-    "AXISBANK": 2,
-    "BAJAJFINSV": 2,
-    "BRITANNIA": 2,
-    "DIVISLAB": 2,
-    "EICHERMOT": 2,
-    "M&M": 2,
-    "SBILIFE": 2,
-    "TATACONSUM": 2
+    "APOLLOHOSP": 3,
+    "AXISBANK": 3,
+    "BAJAJ-AUTO": 1,
+    "BAJFINANCE": 1,
+    "BRITANNIA": 3,
+    "GRASIM": 1,
+    "HINDALCO": 1,
+    "ONGC": 1,
+    "TRENT": 1,
+    "ULTRACEMCO": 1
   },
-  "last_expected_date": "2026-08-28"
+  "last_expected_date": "2026-08-31"
 }

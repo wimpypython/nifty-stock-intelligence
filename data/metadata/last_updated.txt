@@ -1,8 +1,9 @@
-Last successful update: 2026-08-29 10:19:31 UTC
-Duration: 29 seconds
+Last successful update: 2026-09-01 08:51:11 UTC
+Duration: 44 seconds
 Tickers updated: 51 of 51
-Newest data point: 2026-08-28
+Newest data point: 2026-08-31
 Bad ticks repaired this run: 0
-Expected session (median): 2026-08-28
-Tickers at or past expected session: 42 of 51
-Tickers behind expected session (2026-08-28): APOLLOHOSP, AXISBANK, BAJAJFINSV, BRITANNIA, DIVISLAB, EICHERMOT, M&M, SBILIFE, TATACONSUM
+Expected session (median): 2026-08-31
+Tickers at or past expected session: 41 of 51
+Tickers behind expected session (2026-08-31): APOLLOHOSP, AXISBANK, BAJAJ-AUTO, BAJFINANCE, BRITANNIA, GRASIM, HINDALCO, ONGC, TRENT, ULTRACEMCO
+PERSISTENT LAG - not updating: APOLLOHOSP, AXISBANK, BRITANNIA
