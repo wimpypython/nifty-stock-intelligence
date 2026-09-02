@@ -99,10 +99,26 @@ STATE_FILE = os.path.join(METADATA_DIR, "coverage_state.json")
 STATUS_FILE = os.path.join(METADATA_DIR, "last_updated.txt")
 
 # Consecutive runs a ticker may lag before it is treated as broken rather
-# than merely slow. Matches PERSISTENT_THRESHOLD in the orchestrator on
-# purpose - one concept, one number, so the two checks do not disagree
-# about what "persistent" means.
-PERSISTENT_LAG_THRESHOLD = 3
+# than merely slow.
+#
+# Raised from 3 to 5 on 2026-09-01. Three was borrowed from the
+# orchestrator's PERSISTENT_THRESHOLD, which counts FETCH FAILURES - a
+# different thing. A fetch failure three nights running really does mean a
+# renamed or delisted symbol. A ticker being one session behind three runs
+# running does not, because the runs themselves are not evenly spaced:
+# GitHub's queue has delivered this pipeline anywhere between 09:34 and
+# 21:05 IST, and a run that fires before a ticker's bar is finalised will
+# leave it behind through no fault of its own.
+#
+# On 2026-09-01 the alert fired for APOLLOHOSP, AXISBANK and BRITANNIA. All
+# three had been fetched successfully and had gained a row that run; they
+# were simply one session short because the run landed at 14:20 IST, ten
+# minutes before the close. That is not the failure this threshold exists
+# to catch.
+#
+# Five is still far short of a genuinely stuck ticker, which stays behind
+# indefinitely rather than catching up.
+PERSISTENT_LAG_THRESHOLD = 5
 
 
 def load_state():
