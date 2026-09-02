@@ -1,15 +1,14 @@
 {
   "consecutive_lag": {
-    "APOLLOHOSP": 3,
-    "AXISBANK": 3,
-    "BAJAJ-AUTO": 1,
-    "BAJFINANCE": 1,
-    "BRITANNIA": 3,
-    "GRASIM": 1,
-    "HINDALCO": 1,
-    "ONGC": 1,
-    "TRENT": 1,
-    "ULTRACEMCO": 1
+    "ASIANPAINT": 1,
+    "BRITANNIA": 4,
+    "CIPLA": 1,
+    "DIVISLAB": 1,
+    "GRASIM": 2,
+    "ICICIBANK": 1,
+    "JSWSTEEL": 1,
+    "SUNPHARMA": 1,
+    "ULTRACEMCO": 2
   },
-  "last_expected_date": "2026-08-31"
+  "last_expected_date": "2026-09-01"
 }
