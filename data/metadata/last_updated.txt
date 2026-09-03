@@ -1,8 +1,8 @@
-Last successful update: 2026-09-02 08:04:06 UTC
-Duration: 44 seconds
+Last successful update: 2026-09-03 08:14:05 UTC
+Duration: 51 seconds
 Tickers updated: 51 of 51
-Newest data point: 2026-09-01
+Newest data point: 2026-09-02
 Bad ticks repaired this run: 0
-Expected session (median): 2026-09-01
-Tickers at or past expected session: 42 of 51
-Tickers behind expected session (2026-09-01): ASIANPAINT, BRITANNIA, CIPLA, DIVISLAB, GRASIM, ICICIBANK, JSWSTEEL, SUNPHARMA, ULTRACEMCO
+Expected session (median): 2026-09-02
+Tickers at or past expected session: 43 of 51
+Tickers behind expected session (2026-09-02): ASIANPAINT, AXISBANK, BAJAJFINSV, CIPLA, DIVISLAB, DRREDDY, GRASIM, KOTAKBANK

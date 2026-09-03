@@ -1,14 +1,13 @@
 {
   "consecutive_lag": {
-    "ASIANPAINT": 1,
-    "BRITANNIA": 4,
-    "CIPLA": 1,
-    "DIVISLAB": 1,
-    "GRASIM": 2,
-    "ICICIBANK": 1,
-    "JSWSTEEL": 1,
-    "SUNPHARMA": 1,
-    "ULTRACEMCO": 2
+    "ASIANPAINT": 2,
+    "AXISBANK": 1,
+    "BAJAJFINSV": 1,
+    "CIPLA": 2,
+    "DIVISLAB": 2,
+    "DRREDDY": 1,
+    "GRASIM": 3,
+    "KOTAKBANK": 1
   },
-  "last_expected_date": "2026-09-01"
+  "last_expected_date": "2026-09-02"
 }
