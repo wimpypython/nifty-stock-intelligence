@@ -1,13 +1,17 @@
 {
   "consecutive_lag": {
-    "ASIANPAINT": 3,
-    "AXISBANK": 2,
-    "CIPLA": 3,
-    "DIVISLAB": 3,
-    "GRASIM": 4,
-    "INDUSINDBK": 1,
-    "JSWSTEEL": 1,
-    "NIFTY50_INDEX": 1
+    "BAJAJFINSV": 1,
+    "BRITANNIA": 1,
+    "DRREDDY": 1,
+    "GRASIM": 5,
+    "HINDALCO": 1,
+    "KOTAKBANK": 1,
+    "LT": 1,
+    "M&M": 1,
+    "NESTLEIND": 1,
+    "TITAN": 1,
+    "TRENT": 1,
+    "ULTRACEMCO": 1
   },
-  "last_expected_date": "2026-09-03"
+  "last_expected_date": "2026-09-04"
 }
