@@ -171,10 +171,13 @@ def main():
     attempted = succeeded + problems
     total = len(attempted)
 
-    print("\n  succeeded : %d" % len(succeeded))
-    print("  failed    : %d" % len(failed))
-    print("  no data   : %d" % len(no_data))
-    print("  bad ticks repaired: %d" % result["repaired"])
+    print("\n  fetched without error : %d" % len(succeeded))
+    print("  gained rows           : %d" % len(result.get("gained", [])))
+    print("  skipped (current)     : %d" % len(result.get("skipped", [])))
+    print("  returned but not final: %d" % len(result.get("not_final", [])))
+    print("  failed                : %d" % len(failed))
+    print("  no data               : %d" % len(no_data))
+    print("  bad ticks repaired    : %d" % result["repaired"])
 
     # ---- Step 2: classify the failures ----------------------------
     if total == 0:
@@ -250,12 +253,28 @@ def main():
         print(stale_warning)
         print("!" * 64)
 
+    # "Tickers updated: 51 of 51" was true and misleading. It counted the
+    # FETCH CALL succeeding, not data arriving, so it read 51 of 51 on
+    # 27 August while ten tickers silently gained nothing - and again
+    # whenever a run landed before the close and Yahoo returned rows with
+    # null closes. Report what actually happened instead.
+    gained = result.get("gained", [])
+    skipped = result.get("skipped", [])
+    not_final = result.get("not_final", [])
+
     lines = [
         "Last successful update: %s UTC" % finished.strftime("%Y-%m-%d %H:%M:%S"),
         "Duration: %.0f seconds" % duration,
-        "Tickers updated: %d of %d" % (len(succeeded), total),
+        "Tickers fetched without error: %d of %d" % (len(succeeded), total),
+        "Tickers that gained rows: %d" % len(gained),
         "Bad ticks repaired this run: %d" % result["repaired"],
     ]
+    if skipped:
+        lines.append("Skipped, already current: %d" % len(skipped))
+    if not_final:
+        lines.append(
+            "Session returned but not final (null close): %s"
+            % ", ".join(not_final))
     if latest_date is not None:
         lines.insert(3, "Newest data point: %s" % latest_date.strftime("%Y-%m-%d"))
     if stale_warning:

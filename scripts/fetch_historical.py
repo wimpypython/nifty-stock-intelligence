@@ -416,7 +416,7 @@ def fetch_ticker(yahoo_ticker, save_name):
         # exist. See newest_available_session() for why this is not
         # "today - 1 day".
         if not holds_partial and last_date.date() >= newest_available_session():
-            return "up to date"
+            return "skipped, already has %s" % last_date.date()
         fetch_from = (last_date - timedelta(days=LOOKBACK_ROWS * 2)).strftime("%Y-%m-%d")
         mode = "incremental"
 
@@ -456,7 +456,28 @@ def fetch_ticker(yahoo_ticker, save_name):
     combined.to_csv(path, index=False)
 
     if new_rows.empty:
-        return "up to date"
+        # Two very different states used to print identically here, and the
+        # ambiguity cost four separate diagnoses before it was fixed.
+        #
+        #   (a) Yahoo genuinely has nothing newer.
+        #   (b) Yahoo returned a row for a newer session, but with a null
+        #       close because the bar is not final. normalise_download()
+        #       correctly drops it, so nothing is added - and the log used
+        #       to say "up to date", which reads as everything being fine.
+        #
+        # (b) is what happens on every run that lands before the close, and
+        # it is why the set of lagging tickers rotates. GRASIM tripped the
+        # persistent-lag alert on 2026-09-05 with a 4 Sep row carrying
+        # volume 892,619 and a NaN close. Saying so in the log turns a
+        # week of detective work into one readable line.
+        try:
+            newer = [d for d in pd.to_datetime(raw.index).date
+                     if d > last_date.date()]
+        except Exception:
+            newer = []
+        if newer:
+            return "no usable rows, %s returned but not final" % max(newer)
+        return "up to date, newest is %s" % last_date.date()
     return "+%d rows" % len(new_rows)
 
 
@@ -482,7 +503,8 @@ def fetch_all(limit=None, only=None, quiet=False):
         if stocks.empty:
             if not quiet:
                 print("No stock found matching '%s'" % only)
-            return {"succeeded": [], "failed": [], "no_data": [], "repaired": 0}
+            return {"succeeded": [], "failed": [], "no_data": [], "repaired": 0,
+                    "gained": [], "skipped": [], "not_final": []}
         targets = []
     else:
         targets = [(INDEX_TICKER, INDEX_NAME)]
@@ -491,7 +513,8 @@ def fetch_all(limit=None, only=None, quiet=False):
 
     targets += list(zip(stocks["Yahoo_Ticker"], stocks["NSE_Ticker"]))
 
-    result = {"succeeded": [], "failed": [], "no_data": [], "repaired": 0}
+    result = {"succeeded": [], "failed": [], "no_data": [], "repaired": 0,
+              "gained": [], "skipped": [], "not_final": []}
 
     for i, (yahoo_ticker, save_name) in enumerate(targets, start=1):
         label = "[%d/%d] %-12s" % (i, len(targets), save_name)
@@ -506,6 +529,18 @@ def fetch_all(limit=None, only=None, quiet=False):
                 result["no_data"].append(save_name)
             else:
                 result["succeeded"].append(save_name)
+
+            # "succeeded" means the call worked, not that data arrived.
+            # Those are different questions and conflating them is what let
+            # the 27 August incident report "51 of 51" while ten tickers
+            # went stale. Record the two no-op outcomes separately so the
+            # summary can tell the truth.
+            if status.startswith("skipped"):
+                result["skipped"].append(save_name)
+            elif status.startswith("no usable rows"):
+                result["not_final"].append(save_name)
+            elif status.startswith("+") or status.startswith("created"):
+                result["gained"].append(save_name)
 
             if "repaired" in status:
                 try:
