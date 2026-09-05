@@ -1,9 +1,9 @@
-Last successful update: 2026-09-05 07:48:54 UTC
-Duration: 44 seconds
-Tickers updated: 51 of 51
+Last successful update: 2026-09-05 16:55:34 UTC
+Duration: 30 seconds
+Tickers fetched without error: 51 of 51
 Newest data point: 2026-09-04
+Tickers that gained rows: 12
 Bad ticks repaired this run: 0
+Skipped, already current: 39
 Expected session (median): 2026-09-04
-Tickers at or past expected session: 39 of 51
-Tickers behind expected session (2026-09-04): BAJAJFINSV, BRITANNIA, DRREDDY, GRASIM, HINDALCO, KOTAKBANK, LT, M&M, NESTLEIND, TITAN, TRENT, ULTRACEMCO
-PERSISTENT LAG - not updating: GRASIM
+Tickers at or past expected session: 51 of 51

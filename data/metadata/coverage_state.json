@@ -1,17 +1,4 @@
 {
-  "consecutive_lag": {
-    "BAJAJFINSV": 1,
-    "BRITANNIA": 1,
-    "DRREDDY": 1,
-    "GRASIM": 5,
-    "HINDALCO": 1,
-    "KOTAKBANK": 1,
-    "LT": 1,
-    "M&M": 1,
-    "NESTLEIND": 1,
-    "TITAN": 1,
-    "TRENT": 1,
-    "ULTRACEMCO": 1
-  },
+  "consecutive_lag": {},
   "last_expected_date": "2026-09-04"
 }
