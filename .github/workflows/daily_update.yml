@@ -9,10 +9,35 @@ name: Daily Nifty 50 Data Update
 
 on:
   schedule:
+    # Two slots, deliberately. Neither has to be reliable on its own,
+    # because the fetch is incremental: whichever run gets there first
+    # collects what it can, and the other picks up whatever is missing.
+    #
     - cron: '30 3 * * 2-6'    # Tue-Sat 03:30 UTC = 09:00 IST, picks up the
                               # PREVIOUS session. Yahoo can take >24h to
                               # finalise an Indian daily bar, so running at
                               # midnight IST reliably missed that day.
+    #
+    # Added 2026-09-05. The morning slot alone was not enough, for a reason
+    # that took a week of logs to see clearly.
+    #
+    # GitHub's queue delivered the 09:00 slot at 13:18-14:21 IST on four
+    # consecutive weekdays - before the 15:30 close. At that hour Yahoo
+    # returns a row for the current session with a POPULATED VOLUME AND A
+    # NULL CLOSE, because the bar is not final. normalise_download() drops
+    # those rows as worthless, which is correct, so the ticker gains
+    # nothing and stays one session behind.
+    #
+    # That is why the lagging set rotated: it was never a property of
+    # particular tickers, it was whichever ones Yahoo had not finalised at
+    # the moment the run happened. GRASIM tripped the persistent-lag alert
+    # on 2026-09-05 with a 4 Sep row showing volume 892,619 and a NaN
+    # close - not stuck, just not finalised.
+    #
+    # 20:00 IST is 4.5 hours after the close. The two runs that have
+    # landed in the evening (19:57 and 21:05 IST) both collected cleanly.
+    - cron: '30 14 * * 2-6'   # Tue-Sat 14:30 UTC = 20:00 IST, cleanup pass
+
   workflow_dispatch:           # allows manual runs from the Actions tab
 
 # Required for the bot to push updated CSVs back to the repo.
