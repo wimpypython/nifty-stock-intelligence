@@ -1,14 +1,4 @@
 {
-  "consecutive_lag": {
-    "ADANIPORTS": 1,
-    "APOLLOHOSP": 1,
-    "AXISBANK": 1,
-    "CIPLA": 1,
-    "EICHERMOT": 1,
-    "GRASIM": 1,
-    "HINDALCO": 1,
-    "HINDUNILVR": 1,
-    "POWERGRID": 1
-  },
-  "last_expected_date": "2026-09-07"
+  "consecutive_lag": {},
+  "last_expected_date": "2026-09-08"
 }

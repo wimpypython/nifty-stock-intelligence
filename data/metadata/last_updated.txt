@@ -1,10 +1,8 @@
-Last successful update: 2026-09-08 08:17:00 UTC
-Duration: 44 seconds
+Last successful update: 2026-09-08 18:02:31 UTC
+Duration: 49 seconds
 Tickers fetched without error: 51 of 51
-Newest data point: 2026-09-07
-Tickers that gained rows: 42
+Newest data point: 2026-09-08
+Tickers that gained rows: 51
 Bad ticks repaired this run: 0
-Session returned but not final (null close): HINDUNILVR, AXISBANK, POWERGRID, GRASIM, EICHERMOT, CIPLA, ADANIPORTS, APOLLOHOSP, HINDALCO
-Expected session (median): 2026-09-07
-Tickers at or past expected session: 42 of 51
-Tickers behind expected session (2026-09-07): ADANIPORTS, APOLLOHOSP, AXISBANK, CIPLA, EICHERMOT, GRASIM, HINDALCO, HINDUNILVR, POWERGRID
+Expected session (median): 2026-09-08
+Tickers at or past expected session: 51 of 51
