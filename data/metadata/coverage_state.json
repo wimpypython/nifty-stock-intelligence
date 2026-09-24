@@ -1,22 +1,4 @@
 {
-  "consecutive_lag": {
-    "ASIANPAINT": 1,
-    "AXISBANK": 1,
-    "BAJAJ-AUTO": 1,
-    "BRITANNIA": 1,
-    "CIPLA": 1,
-    "DIVISLAB": 1,
-    "EICHERMOT": 1,
-    "HDFCLIFE": 1,
-    "HEROMOTOCO": 1,
-    "INDUSINDBK": 1,
-    "JSWSTEEL": 1,
-    "KOTAKBANK": 1,
-    "NESTLEIND": 1,
-    "SBILIFE": 1,
-    "SUNPHARMA": 1,
-    "TECHM": 1,
-    "ULTRACEMCO": 1
-  },
+  "consecutive_lag": {},
   "last_expected_date": "2026-09-23"
 }
