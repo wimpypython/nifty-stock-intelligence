@@ -1,9 +1,10 @@
-Last successful update: 2026-10-14 18:50:02 UTC
-Duration: 49 seconds
+Last successful update: 2026-10-15 08:31:20 UTC
+Duration: 44 seconds
 Tickers fetched without error: 51 of 51
-Newest data point: 2026-10-13
-Tickers that gained rows: 0
+Newest data point: 2026-10-14
+Tickers that gained rows: 44
 Bad ticks repaired this run: 0
-Session returned but not final (null close): RELIANCE, TCS, HDFCBANK, ICICIBANK, INFY, BHARTIARTL, SBIN, LT, ITC, HINDUNILVR, KOTAKBANK, AXISBANK, BAJFINANCE, HCLTECH, MARUTI, SUNPHARMA, ASIANPAINT, TITAN, TMPV, WIPRO, ULTRACEMCO, BAJAJFINSV, NTPC, POWERGRID, ONGC, COALINDIA, TECHM, HDFCLIFE, INDUSINDBK, M&M, ADANIENT, GRASIM, BPCL, DIVISLAB, EICHERMOT, CIPLA, SBILIFE, JSWSTEEL, BAJAJ-AUTO, ADANIPORTS, BRITANNIA, APOLLOHOSP, TATACONSUM, TATASTEEL, HINDALCO, DRREDDY, TRENT, NESTLEIND, HEROMOTOCO, SHRIRAMFIN
-Expected session (median): 2026-10-13
-Tickers at or past expected session: 51 of 51
+Session returned but not final (null close): BAJFINANCE, ULTRACEMCO, INDUSINDBK, GRASIM, BAJAJ-AUTO, TATACONSUM, TRENT
+Expected session (median): 2026-10-14
+Tickers at or past expected session: 44 of 51
+Tickers behind expected session (2026-10-14): BAJAJ-AUTO, BAJFINANCE, GRASIM, INDUSINDBK, TATACONSUM, TRENT, ULTRACEMCO
