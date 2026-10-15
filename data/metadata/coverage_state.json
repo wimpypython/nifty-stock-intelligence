@@ -1,12 +1,4 @@
 {
-  "consecutive_lag": {
-    "BAJAJ-AUTO": 1,
-    "BAJFINANCE": 1,
-    "GRASIM": 1,
-    "INDUSINDBK": 1,
-    "TATACONSUM": 1,
-    "TRENT": 1,
-    "ULTRACEMCO": 1
-  },
+  "consecutive_lag": {},
   "last_expected_date": "2026-10-14"
 }
