@@ -1,4 +1,13 @@
 {
-  "consecutive_lag": {},
-  "last_expected_date": "2026-10-14"
+  "consecutive_lag": {
+    "ASIANPAINT": 1,
+    "CIPLA": 1,
+    "DRREDDY": 1,
+    "GRASIM": 1,
+    "HEROMOTOCO": 1,
+    "INDUSINDBK": 1,
+    "TATACONSUM": 1,
+    "ULTRACEMCO": 1
+  },
+  "last_expected_date": "2026-10-15"
 }
