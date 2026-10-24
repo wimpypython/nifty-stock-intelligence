@@ -1,4 +1,12 @@
 {
-  "consecutive_lag": {},
-  "last_expected_date": "2026-10-22"
+  "consecutive_lag": {
+    "ADANIENT": 1,
+    "APOLLOHOSP": 1,
+    "BRITANNIA": 1,
+    "EICHERMOT": 1,
+    "HEROMOTOCO": 1,
+    "TATACONSUM": 1,
+    "ULTRACEMCO": 1
+  },
+  "last_expected_date": "2026-10-23"
 }
