@@ -1,10 +1,9 @@
-Last successful update: 2026-10-24 08:20:23 UTC
-Duration: 42 seconds
+Last successful update: 2026-10-24 17:32:51 UTC
+Duration: 28 seconds
 Tickers fetched without error: 51 of 51
 Newest data point: 2026-10-23
-Tickers that gained rows: 44
+Tickers that gained rows: 7
 Bad ticks repaired this run: 0
-Session returned but not final (null close): ULTRACEMCO, ADANIENT, EICHERMOT, BRITANNIA, APOLLOHOSP, TATACONSUM, HEROMOTOCO
+Skipped, already current: 44
 Expected session (median): 2026-10-23
-Tickers at or past expected session: 44 of 51
-Tickers behind expected session (2026-10-23): ADANIENT, APOLLOHOSP, BRITANNIA, EICHERMOT, HEROMOTOCO, TATACONSUM, ULTRACEMCO
+Tickers at or past expected session: 51 of 51
